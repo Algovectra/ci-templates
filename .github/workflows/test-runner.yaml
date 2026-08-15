@@ -1,0 +1,33 @@
+name: Test Self-Hosted Runner
+
+on:
+  workflow_dispatch: # manual trigger only
+
+jobs:
+  test:
+    runs-on: self-hosted
+    tags: ["docker"] # remove if you didn't set labels
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify environment
+        run: |
+          echo "User: $(whoami)"
+          echo "Host: $(hostname)"
+          echo "Podman: $(podman --version)"
+
+      - name: Build test image
+        run: |
+          cat > Dockerfile << 'EOF'
+          FROM alpine:latest
+          RUN echo "built on $(hostname)" > /hello.txt
+          CMD cat /hello.txt
+          EOF
+          podman build -t test-runner:latest .
+
+      - name: Run test image
+        run: podman run --rm test-runner:latest
+
+      - name: Cleanup
+        if: always()
+        run: podman rmi test-runner:latest 2>/dev/null || true
