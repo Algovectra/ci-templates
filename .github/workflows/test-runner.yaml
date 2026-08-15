@@ -5,7 +5,7 @@ on:
 
 jobs:
   test:
-    runs-on: algovectra-k8s
+    runs-on: docker
     steps:
       - uses: actions/checkout@v4
 
