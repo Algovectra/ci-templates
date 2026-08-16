@@ -8,7 +8,7 @@ self-hosted GitHub Actions runners.
 | Path | Type | Purpose |
 | ---- | ---- | ------- |
 | `.github/actions/podman-build-push/action.yml` | Composite action | Build an image with `podman build` and push it with `podman push` |
-| `.github/workflows/test-action.yaml` | Workflow | Exercises the action (build-only and build-and-push jobs) |
+| `.github/workflows/build-runpod-bench.yaml` | Workflow | Builds and pushes `algovectra/runpod-bench:testing-ci` |
 | `test/Dockerfile` | Dockerfile | Minimal sample image used by the test workflow |
 
 ## Usage
@@ -31,6 +31,8 @@ jobs:
           labels: |
             org.opencontainers.image.source=myorg/app
           push: "true"             # default
+          memory: "8g"              # build-container memory limit
+          cpus: "4"                 # build-container CPU quota
 ```
 
 ## Inputs
@@ -45,6 +47,8 @@ jobs:
 | `labels` | no | `""` | Image labels, one `KEY=VALUE` per line or comma-separated |
 | `platforms` | no | `""` | Target platform(s), e.g. `linux/amd64,linux/arm64` |
 | `push` | no | `true` | Push after building; set to `false` to build only |
+| `memory` | no | `""` | Memory limit for the build container (e.g. `8g`, `512m`) |
+| `cpus` | no | `""` | CPU quota for the build container (e.g. `4`, `0.5`) |
 | `tls-verify` | no | `true` | Require HTTPS + verify certs on push; `false` allows insecure registries |
 | `extra-args` | no | `""` | Additional flags forwarded to `podman build` |
 | `cleanup` | no | `true` | Remove the built image(s) from the runner afterward to save disk space |

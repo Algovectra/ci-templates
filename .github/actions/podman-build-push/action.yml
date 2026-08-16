@@ -51,6 +51,18 @@ inputs:
       Set to `false` to allow insecure registries.
     required: false
     default: "true"
+  memory:
+    description: >-
+      Memory limit for the build container (e.g. `2g`, `512m`).
+      Passed to podman with `--memory`. Leave empty for no limit.
+    required: false
+    default: ""
+  cpus:
+    description: >-
+      CPU quota for the build container (e.g. `2`, `0.5`).
+      Passed to podman with `--cpus`. Leave empty for no limit.
+    required: false
+    default: ""
   extra-args:
     description: "Additional flags to pass to `podman build`."
     required: false
@@ -75,6 +87,8 @@ runs:
         INPUT_BUILD_ARGS: ${{ inputs.build-args }}
         INPUT_LABELS: ${{ inputs.labels }}
         INPUT_PLATFORMS: ${{ inputs.platforms }}
+        INPUT_MEMORY: ${{ inputs.memory }}
+        INPUT_CPUS: ${{ inputs.cpus }}
         INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
         set -euo pipefail
@@ -105,6 +119,15 @@ runs:
           platform_args+=(--platform "${INPUT_PLATFORMS}")
         fi
 
+        # resource limits
+        resource_args=()
+        if [[ -n "${INPUT_MEMORY}" ]]; then
+          resource_args+=(--memory "${INPUT_MEMORY}")
+        fi
+        if [[ -n "${INPUT_CPUS}" ]]; then
+          resource_args+=(--cpus "${INPUT_CPUS}")
+        fi
+
         # extra args (split on whitespace)
         extra_args=()
         if [[ -n "${INPUT_EXTRA_ARGS}" ]]; then
@@ -118,6 +141,7 @@ runs:
           "${build_args[@]}" \
           "${labels_args[@]}" \
           "${platform_args[@]}" \
+          "${resource_args[@]}" \
           "${extra_args[@]}" \
           "${INPUT_CONTEXT}"
         echo "::endgroup::"

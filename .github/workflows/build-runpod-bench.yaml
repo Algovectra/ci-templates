@@ -31,3 +31,5 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           push: "true"
           cleanup: "true"
+          memory: "8g"
+          cpus: "4"
