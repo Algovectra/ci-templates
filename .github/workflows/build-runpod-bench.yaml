@@ -13,7 +13,7 @@ on:
 jobs:
   build-and-push:
     name: Build and push to algovectra/runpod-bench:testing-ci
-    runs-on: docker
+    runs-on: podman
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +27,7 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
             REVISION=${{ github.sha }}
           labels: |
-            org.opencontainers.image.source=Algovectra/ci-tests
+            org.opencontainers.image.source=Algovectra/ci-templates
             org.opencontainers.image.revision=${{ github.sha }}
           push: "true"
           cleanup: "true"

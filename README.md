@@ -1,4 +1,4 @@
-# ci-tests
+# ci-templates
 
 Reusable CI action for building and pushing container images with Podman on
 self-hosted GitHub Actions runners.
@@ -9,7 +9,7 @@ self-hosted GitHub Actions runners.
 | ---- | ---- | ------- |
 | `.github/actions/podman-build-push/action.yml` | Composite action | Build an image with `podman build` and push it with `podman push` |
 | `.github/workflows/build-runpod-bench.yaml` | Workflow | Builds and pushes `algovectra/runpod-bench:testing-ci` |
-| `test/Dockerfile` | Dockerfile | Minimal sample image used by the test workflow |
+| `test/Dockerfile` | Dockerfile | Minimal sample image used by the test workflow (label points to `Algovectra/ci-templates`) |
 
 ## Usage
 
@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: Algovectra/ci-tests/.github/actions/podman-build-push@main
+      - uses: Algovectra/ci-templates/.github/actions/podman-build-push@main
         with:
           image: quay.io/myorg/app:v1
           tags: quay.io/myorg/app:latest
