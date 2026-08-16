@@ -7,7 +7,6 @@ on:
       - main
     paths:
       - test/Dockerfile
-      - test/benchmark.py
       - .github/actions/podman-build-push/**
       - .github/workflows/build-runpod-bench.yaml
 
