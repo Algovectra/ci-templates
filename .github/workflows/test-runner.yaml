@@ -17,6 +17,9 @@ jobs:
 
       - name: Build test image
         run: |
+          env
+          export XDG_RUNTIME_DIR=/run/user/$(id -u)
+          export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus
           cat > Dockerfile << 'EOF'
           FROM alpine:latest
           RUN echo "built on $(hostname)" > /hello.txt
