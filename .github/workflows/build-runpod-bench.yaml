@@ -1,0 +1,34 @@
+name: Build and push runpod-bench
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - test/Dockerfile
+      - test/benchmark.py
+      - .github/actions/podman-build-push/**
+      - .github/workflows/build-runpod-bench.yaml
+
+jobs:
+  build-and-push:
+    name: Build and push to algovectra/runpod-bench:testing-ci
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push image
+        uses: ./.github/actions/podman-build-push
+        with:
+          image: docker.io/algovectra/runpod-bench:testing-ci
+          dockerfile: test/Dockerfile
+          context: test
+          build-args: |
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            REVISION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=Algovectra/ci-tests
+            org.opencontainers.image.revision=${{ github.sha }}
+          push: "true"
+          cleanup: "true"

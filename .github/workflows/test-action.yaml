@@ -1,0 +1,64 @@
+name: Test podman-build-push action
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/actions/podman-build-push/**
+      - test/Dockerfile
+      - .github/workflows/test-action.yaml
+  push:
+    branches:
+      - main
+    paths:
+      - .github/actions/podman-build-push/**
+      - test/Dockerfile
+      - .github/workflows/test-action.yaml
+
+jobs:
+  build-only:
+    name: Build (no push)
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sample image without pushing
+        uses: ./.github/actions/podman-build-push
+        with:
+          image: localhost:5000/ci-tests-sample:build-only
+          dockerfile: test/Dockerfile
+          context: test
+          build-args: |
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+          push: "false"
+          cleanup: "false"  # keep the image so the verify step can run it
+
+      - name: Verify the image runs
+        run: podman run --rm localhost:5000/ci-tests-sample:build-only
+
+      - name: Cleanup after verify
+        if: always()
+        run: podman rmi localhost:5000/ci-tests-sample:build-only 2>/dev/null || true
+
+  build-and-push:
+    name: Build and push (multi-tag)
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build, tag, and push
+        uses: ./.github/actions/podman-build-push
+        with:
+          image: localhost:5000/ci-tests-sample:latest
+          tags: |
+            localhost:5000/ci-tests-sample:${{ github.sha }}
+          dockerfile: test/Dockerfile
+          context: test
+          build-args: |
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cleanup: "true"  # action removes local images after pushing

@@ -1,0 +1,183 @@
+name: "Podman build and push"
+description: >-
+  Build a container image with Podman and push it to a registry.
+  Supports multiple tags, build args, labels, and optional multi-arch builds.
+
+inputs:
+  image:
+    description: >-
+      Primary image tag to build and push (include registry host,
+      e.g. quay.io/org/app:tag). Additional tags can be supplied via `tags`.
+    required: true
+  tags:
+    description: >-
+      Additional image tags to apply and push, one per line (or comma-separated).
+      The value of `image` is always applied first.
+    required: false
+    default: ""
+  dockerfile:
+    description: "Path to the Dockerfile (or Containerfile) relative to the context."
+    required: false
+    default: "Dockerfile"
+  context:
+    description: "Build context directory."
+    required: false
+    default: "."
+  build-args:
+    description: >-
+      Build-time variables, one `KEY=VALUE` per line (or comma-separated).
+      Passed to podman with `--build-arg`.
+    required: false
+    default: ""
+  labels:
+    description: >-
+      Image labels, one `KEY=VALUE` per line (or comma-separated).
+      Passed to podman with `--label`.
+    required: false
+    default: ""
+  platforms:
+    description: >-
+      Target platform(s), e.g. `linux/amd64` or `linux/amd64,linux/arm64`.
+      When set, uses `podman build --platform`. Leave empty for the host arch.
+    required: false
+    default: ""
+  push:
+    description: "Whether to push the image after building. Set to `false` to build only."
+    required: false
+    default: "true"
+  tls-verify:
+    description: >-
+      Require HTTPS and verify certificates when pushing (`--tls-verify`).
+      Set to `false` to allow insecure registries.
+    required: false
+    default: "true"
+  extra-args:
+    description: "Additional flags to pass to `podman build`."
+    required: false
+    default: ""
+  cleanup:
+    description: >-
+      Remove the built image(s) from the runner after the step completes.
+      Set to `false` to keep them. Default `true` to conserve disk space.
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build image
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_TAGS: ${{ inputs.tags }}
+        INPUT_DOCKERFILE: ${{ inputs.dockerfile }}
+        INPUT_CONTEXT: ${{ inputs.context }}
+        INPUT_BUILD_ARGS: ${{ inputs.build-args }}
+        INPUT_LABELS: ${{ inputs.labels }}
+        INPUT_PLATFORMS: ${{ inputs.platforms }}
+        INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: |
+        set -euo pipefail
+
+        build_args=()
+        # build-args (newline or comma separated KEY=VALUE)
+        if [[ -n "${INPUT_BUILD_ARGS}" ]]; then
+          while IFS= read -r pair; do
+            pair="${pair%$'\r'}"
+            [[ -z "${pair}" ]] && continue
+            build_args+=(--build-arg "${pair}")
+          done < <(printf '%s' "${INPUT_BUILD_ARGS}" | tr ',' '\n')
+        fi
+
+        # labels (newline or comma separated KEY=VALUE)
+        labels_args=()
+        if [[ -n "${INPUT_LABELS}" ]]; then
+          while IFS= read -r pair; do
+            pair="${pair%$'\r'}"
+            [[ -z "${pair}" ]] && continue
+            labels_args+=(--label "${pair}")
+          done < <(printf '%s' "${INPUT_LABELS}" | tr ',' '\n')
+        fi
+
+        # platforms
+        platform_args=()
+        if [[ -n "${INPUT_PLATFORMS}" ]]; then
+          platform_args+=(--platform "${INPUT_PLATFORMS}")
+        fi
+
+        # extra args (split on whitespace)
+        extra_args=()
+        if [[ -n "${INPUT_EXTRA_ARGS}" ]]; then
+          read -r -a extra_args <<< "${INPUT_EXTRA_ARGS}"
+        fi
+
+        echo "::group::Build ${INPUT_IMAGE}"
+        podman build \
+          -f "${INPUT_DOCKERFILE}" \
+          -t "${INPUT_IMAGE}" \
+          "${build_args[@]}" \
+          "${labels_args[@]}" \
+          "${platform_args[@]}" \
+          "${extra_args[@]}" \
+          "${INPUT_CONTEXT}"
+        echo "::endgroup::"
+
+        # Apply additional tags
+        if [[ -n "${INPUT_TAGS}" ]]; then
+          while IFS= read -r tag; do
+            tag="${tag%$'\r'}"
+            [[ -z "${tag}" ]] && continue
+            echo "Tagging ${INPUT_IMAGE} -> ${tag}"
+            podman tag "${INPUT_IMAGE}" "${tag}"
+          done < <(printf '%s' "${INPUT_TAGS}" | tr ',' '\n')
+        fi
+
+    - name: Push image
+      if: ${{ inputs.push == 'true' }}
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_TAGS: ${{ inputs.tags }}
+        INPUT_TLS_VERIFY: ${{ inputs.tls-verify }}
+      run: |
+        set -euo pipefail
+
+        tls_flag=()
+        if [[ "${INPUT_TLS_VERIFY}" == "false" ]]; then
+          tls_flag=(--tls-verify=false)
+        fi
+
+        echo "::group::Push ${INPUT_IMAGE}"
+        podman push "${tls_flag[@]}" "${INPUT_IMAGE}"
+        echo "::endgroup::"
+
+        if [[ -n "${INPUT_TAGS}" ]]; then
+          while IFS= read -r tag; do
+            tag="${tag%$'\r'}"
+            [[ -z "${tag}" ]] && continue
+            echo "::group::Push ${tag}"
+            podman push "${tls_flag[@]}" "${tag}"
+            echo "::endgroup::"
+          done < <(printf '%s' "${INPUT_TAGS}" | tr ',' '\n')
+        fi
+
+    - name: Cleanup local images
+      if: ${{ always() && inputs.cleanup == 'true' }}
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_TAGS: ${{ inputs.tags }}
+      run: |
+        set -uo pipefail
+
+        echo "::group::Remove local images"
+        podman rmi "${INPUT_IMAGE}" 2>/dev/null || true
+
+        if [[ -n "${INPUT_TAGS}" ]]; then
+          while IFS= read -r tag; do
+            tag="${tag%$'\r'}"
+            [[ -z "${tag}" ]] && continue
+            podman rmi "${tag}" 2>/dev/null || true
+          done < <(printf '%s' "${INPUT_TAGS}" | tr ',' '\n')
+        fi
+        echo "::endgroup::"
