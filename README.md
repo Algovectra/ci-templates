@@ -16,7 +16,7 @@ self-hosted GitHub Actions runners.
 ```yaml
 jobs:
   build-and-push:
-    runs-on: docker
+    runs-on: podman
     steps:
       - uses: actions/checkout@v4
 
