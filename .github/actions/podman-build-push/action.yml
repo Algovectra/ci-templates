@@ -125,7 +125,10 @@ runs:
           resource_args+=(--memory "${INPUT_MEMORY}")
         fi
         if [[ -n "${INPUT_CPUS}" ]]; then
-          resource_args+=(--cpus "${INPUT_CPUS}")
+          # podman build doesn't support --cpus in older versions;
+          # use --cpu-period/--cpu-quota instead (quota = cpus * period)
+          cpu_quota=$(awk -v c="${INPUT_CPUS}" 'BEGIN{printf "%d", c * 100000}')
+          resource_args+=(--cpu-period 100000 --cpu-quota "${cpu_quota}")
         fi
 
         # extra args (split on whitespace)

@@ -48,7 +48,7 @@ jobs:
 | `platforms` | no | `""` | Target platform(s), e.g. `linux/amd64,linux/arm64` |
 | `push` | no | `true` | Push after building; set to `false` to build only |
 | `memory` | no | `""` | Memory limit for the build container (e.g. `8g`, `512m`) |
-| `cpus` | no | `""` | CPU quota for the build container (e.g. `4`, `0.5`) |
+| `cpus` | no | `""` | CPU quota for the build container (e.g. `4`, `0.5`); applied via `--cpu-period`/`--cpu-quota` |
 | `tls-verify` | no | `true` | Require HTTPS + verify certs on push; `false` allows insecure registries |
 | `extra-args` | no | `""` | Additional flags forwarded to `podman build` |
 | `cleanup` | no | `true` | Remove the built image(s) from the runner afterward to save disk space |
