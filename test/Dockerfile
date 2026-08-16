@@ -10,13 +10,3 @@ LABEL org.opencontainers.image.revision="${REVISION}"
 LABEL org.opencontainers.image.source="Algovectra/ci-tests"
 
 WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y stress-ng=1.* \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY benchmark.py .
-
-RUN chmod +x benchmark.py
-
-ENTRYPOINT ["python3", "/app/benchmark.py"]
